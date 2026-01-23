@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Chat WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #conversation { margin-top: 20px; border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+        .message { border-bottom: 1px solid #eee; padding: 5px; }
+    </style>
+</head>
+<body>
+<h2>Spring Boot WebSocket Chat</h2>
+
+<div>
+    <label for="username"></label><input type="text" id="username" placeholder="Enter Username" />
+    <button onclick="connect()">Connect</button>
+</div>
+
+<div id="chat-controls" style="display:none; margin-top: 10px;">
+    <label for="message"></label><input type="text" id="message" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<div id="conversation"></div>
+
+<script>
+    var stompClient = null;
+    var username = null;
+
+    function connect() {
+        username = document.getElementById('username').value.trim();
+        if(!username) { alert("Please enter a name"); return; }
+
+        <!--Connect to the /ws endpoint we configured in Java-->
+        var socket = new SockJS('/ws'); 
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+            
+            <!--Show chat UI-->
+            document.getElementById('chat-controls').style.display = 'block';
+            
+            <!--Subscribe to the public topic-->
+            stompClient.subscribe('/topic/public', function (chatMessage) {
+                showMessage(JSON.parse(chatMessage.body));
+            });
+
+            <!--Send a "JOIN" message to the server-->
+            stompClient.send("/app/chat.addUser",
+                {},
+                JSON.stringify({sender: username, type: 'JOIN'})
+            );
+        });
+    }
+
+    function sendMessage() {
+        var messageContent = document.getElementById('message').value.trim();
+        if(messageContent && stompClient) {
+            var chatMessage = {
+                sender: username,
+                content: messageContent,
+                type: 'CHAT'
+            };
+            <!--Send the message to the server-->
+            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+            document.getElementById('message').value = '';
+        }
+    }
+
+    function showMessage(message) {
+        var response = document.getElementById('conversation');
+        var p = document.createElement('div');
+        p.className = 'message';
+        
+        if(message.type === 'JOIN') {
+            p.style.color = 'green';
+            p.textContent = message.sender + ' joined!';
+        } else if (message.type === 'LEAVE') {
+            p.style.color = 'red';
+            p.textContent = message.sender + ' left!';
+        } else {
+            p.textContent = message.sender + ": " + message.content;
+        }
+        
+        response.appendChild(p);
+    }
+</script>
+</body>
+</html>
