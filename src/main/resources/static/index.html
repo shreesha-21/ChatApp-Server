@@ -34,7 +34,7 @@
         if(!username) { alert("Please enter a name"); return; }
 
         <!--Connect to the /ws endpoint we configured in Java-->
-        var socket = new SockJS('/ws'); 
+        var socket = new SockJS('/ws-web');
         stompClient = Stomp.over(socket);
 
         stompClient.connect({}, function (frame) {

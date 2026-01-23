@@ -14,9 +14,15 @@ public class WebSockerConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws")
+
+        //  Registry endpoint for web client
+        registry.addEndpoint("/ws-web")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
+
+        // Registry endpoint for android client
+        registry.addEndpoint("/ws-android")
                 .setAllowedOriginPatterns("*");
-//                .withSockJS(); // Remove this for native Android apps, keep if using a Web Browser fallback
     }
 
     @Override
