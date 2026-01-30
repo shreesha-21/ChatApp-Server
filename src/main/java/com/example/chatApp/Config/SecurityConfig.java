@@ -16,6 +16,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)   // Disables csrf for websocket
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/ws-android/**", "/ws-web/**").permitAll()    //  Allows handshake
+                    .requestMatchers("/index.html").permitAll() //  this endpoint is used to test the backend with my index file
                     .anyRequest().authenticated()   //  Secures everything else
             );
         return http.build();
