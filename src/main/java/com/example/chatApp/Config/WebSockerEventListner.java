@@ -23,9 +23,10 @@ public class WebSockerEventListner {
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String username = (String) Objects.requireNonNull(headerAccessor.getSessionAttributes()).get("username");
+        String roomId = (String) headerAccessor.getSessionAttributes().get("room_id");
 
         if (username != null) {
-            log.info("User disconnected: {}", username);
+            log.info("{} disconnected from {}!", username, roomId);
 
             ChatMessage chatMessage = ChatMessage
                     .builder()
@@ -33,7 +34,7 @@ public class WebSockerEventListner {
                     .sender(username)
                     .build();
 
-            messagingTemplate.convertAndSend("/topic/public", chatMessage);
+            messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
         }
 
     }

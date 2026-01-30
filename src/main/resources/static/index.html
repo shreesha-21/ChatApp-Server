@@ -1,26 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Chat WebSocket Test</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <title>Chat Room Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
         body { font-family: sans-serif; padding: 20px; }
         #conversation { margin-top: 20px; border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
         .message { border-bottom: 1px solid #eee; padding: 5px; }
+        .controls { margin-bottom: 10px; }
     </style>
 </head>
 <body>
-<h2>Spring Boot WebSocket Chat</h2>
+<h2>Spring Boot Dynamic Chat</h2>
 
-<div>
-    <label for="username"></label><input type="text" id="username" placeholder="Enter Username" />
-    <button onclick="connect()">Connect</button>
+<div class="controls">
+    <label for="username"></label><input type="text" id="username" placeholder="Username (e.g. Alice)" />
+    <label for="roomId"></label><input type="text" id="roomId" placeholder="Room ID (e.g. sports)" />
+    <button onclick="connect()">Join Room</button>
 </div>
 
-<div id="chat-controls" style="display:none; margin-top: 10px;">
+<div id="chat-controls" style="display:none;">
     <label for="message"></label><input type="text" id="message" placeholder="Type a message..." />
     <button onclick="sendMessage()">Send</button>
+    <button onclick="disconnect()" style="background-color: #ffcccc;">Leave</button>
 </div>
 
 <div id="conversation"></div>
@@ -28,28 +31,36 @@
 <script>
     var stompClient = null;
     var username = null;
+    var roomId = null;
 
     function connect() {
         username = document.getElementById('username').value.trim();
-        if(!username) { alert("Please enter a name"); return; }
+        roomId = document.getElementById('roomId').value.trim();
 
-        <!--Connect to the /ws endpoint we configured in Java-->
+        if(!username || !roomId) { alert("Please enter both Name and Room ID"); return; }
+
+        <!--Connect to the Web Endpoint-->
         var socket = new SockJS('/ws-web');
         stompClient = Stomp.over(socket);
 
-        stompClient.connect({}, function (frame) {
+        <!--Auth Header (Mock Token = Username)-->
+        var headers = {
+            'Authorization': 'Bearer ' + username
+        };
+
+        stompClient.connect(headers, function (frame) {
             console.log('Connected: ' + frame);
-            
-            <!--Show chat UI-->
             document.getElementById('chat-controls').style.display = 'block';
-            
-            <!--Subscribe to the public topic-->
-            stompClient.subscribe('/topic/public', function (chatMessage) {
+            document.getElementById('conversation').innerHTML = ''; // Clear old chat
+
+            <!--Subscribe to Dynamic Room Topic-->
+            <!--Backend broadcasts to: /topic/{roomId}-->
+            stompClient.subscribe('/topic/' + roomId, function (chatMessage) {
                 showMessage(JSON.parse(chatMessage.body));
             });
 
-            <!--Send a "JOIN" message to the server-->
-            stompClient.send("/app/chat.addUser",
+            <!--Send JOIN event-->
+            stompClient.send("/app/chat/" + roomId + "/addUser",
                 {},
                 JSON.stringify({sender: username, type: 'JOIN'})
             );
@@ -64,27 +75,34 @@
                 content: messageContent,
                 type: 'CHAT'
             };
-            <!--Send the message to the server-->
-            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+            // 5. Send to Dynamic Destination
+            stompClient.send("/app/chat/" + roomId + "/sendMessage", {}, JSON.stringify(chatMessage));
             document.getElementById('message').value = '';
         }
+    }
+
+    function disconnect() {
+        if (stompClient !== null) {
+            stompClient.disconnect();
+        }
+        document.getElementById('chat-controls').style.display = 'none';
+        console.log("Disconnected");
     }
 
     function showMessage(message) {
         var response = document.getElementById('conversation');
         var p = document.createElement('div');
         p.className = 'message';
-        
+
         if(message.type === 'JOIN') {
             p.style.color = 'green';
-            p.textContent = message.sender + ' joined!';
+            p.textContent = message.sender + ' joined ' + roomId + '!';
         } else if (message.type === 'LEAVE') {
             p.style.color = 'red';
             p.textContent = message.sender + ' left!';
         } else {
             p.textContent = message.sender + ": " + message.content;
         }
-        
         response.appendChild(p);
     }
 </script>
