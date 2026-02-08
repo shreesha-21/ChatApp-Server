@@ -12,10 +12,10 @@ public class ChatService {
 
     private final ChatMessageRepository chatMessageRepository;
 
-    public ChatMessage save(ChatMessage chatMessage) {
+    public void save(ChatMessage chatMessage) {
         String chatId = getChatId(chatMessage.getSender(), chatMessage.getRecipient(), chatMessage.isGroup());
         chatMessage.setChatId(chatId);
-        return chatMessage;
+        chatMessageRepository.save(chatMessage);
     }
 
     // generates unique chat id for the chats
