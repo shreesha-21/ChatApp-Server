@@ -2,6 +2,7 @@ package com.example.chatApp.controller;
 
 import com.example.chatApp.model.ChatMessage;
 import com.example.chatApp.repository.ChatMessageRepository;
+import com.example.chatApp.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -19,45 +20,39 @@ import java.util.Objects;
 public class ChatController {
 
     private final SimpMessagingTemplate messagingTemplate;
-    private final ChatMessageRepository chatMessageRepository;
+    private final ChatService chatService;
 
-    //  Mapping to send a new message to the chat in a room
-    @MessageMapping("/chat/{roomId}/sendMessage")
-    public void sendMessage(@DestinationVariable String roomId, @Payload ChatMessage chatMessage) {
-        messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
-    }
+    @MessageMapping("/chat.sendMessage")
+    public void sendMessage(@Payload ChatMessage chatMessage) {
 
-    //  Mapping for adding a new user to a room
-    @MessageMapping("/chat/{roomId}/addUser")
-    public void addUser(@DestinationVariable String roomId, @Payload ChatMessage chatMessage, SimpMessageHeaderAccessor headerAccessor) {
-        //  Storing the username in Websocket session so that we can know when the user leaves the chat
-        Objects.requireNonNull(headerAccessor.getSessionAttributes()).put("username", chatMessage.getSender());
-        headerAccessor.getSessionAttributes().put("room_id", roomId);
-
-        messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
-    }
-
-    @MessageMapping("/chat.sendPrivateMessage")
-    public void sendPrivateMessage(@Payload ChatMessage chatMessage) {
-
-        // Saving to the db
         chatMessage.setTimeStamp(new Date());
-        chatMessageRepository.save(chatMessage);
+        chatService.save(chatMessage);
 
-        // Sending the message to the receiver
-        messagingTemplate.convertAndSendToUser(
-                chatMessage.getRecipient(),
-                "/queue/private",
-                chatMessage
-        );
+        if (chatMessage.isGroup()) {
 
-        // Sending the message to the sender
-        messagingTemplate.convertAndSendToUser(
-                chatMessage.getSender(),
-                "/queue/private",
-                chatMessage
-        );
+            // Sending the message to topic in case of group chats
+            messagingTemplate.convertAndSend(
+                    "/topic/" + chatMessage.getRecipient(),
+                    chatMessage
+            );
 
+        }
+        else {
+
+            // sending the message to the recipient
+            messagingTemplate.convertAndSendToUser(
+                    chatMessage.getRecipient(),
+                    "/queue/private",
+                    chatMessage
+            );
+
+            // sending the message back to the user
+            messagingTemplate.convertAndSendToUser(
+                    chatMessage.getRecipient(),
+                    "/queue/private",
+                    chatMessage
+            );
+        }
     }
 
 }
