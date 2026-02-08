@@ -12,13 +12,13 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 //  Configuration file for Websocket
 @Configuration
 @EnableWebSocketMessageBroker
-public class WebSockerConfig implements WebSocketMessageBrokerConfigurer {
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     // channel interceptor which handles the authentication
     private final ChannelInterceptor authChannelInterceptor;
 
     // Constructor for channel interceptor
-    public WebSockerConfig(AuthChannelInterceptor authChannelInterceptor) {
+    public WebSocketConfig(AuthChannelInterceptor authChannelInterceptor) {
         this.authChannelInterceptor = authChannelInterceptor;
     }
 
@@ -44,6 +44,7 @@ public class WebSockerConfig implements WebSocketMessageBrokerConfigurer {
         // Path to which the client sends the messages to the server
         registry.setApplicationDestinationPrefixes("/app");
 
+        // Destination prefix used to route to specific users
         registry.setUserDestinationPrefix("/user");
 
     }
