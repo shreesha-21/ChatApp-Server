@@ -7,6 +7,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.util.Objects;
@@ -17,26 +18,29 @@ import java.util.Objects;
 @Slf4j
 public class WebSocketEventListener {
 
-    private final SimpMessageSendingOperations messagingTemplate;
+    // listens to user coming online events
+    @EventListener
+    public void handleWebSocketConnectListener(SessionConnectedEvent event) {
+        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+        String username = (String) Objects.requireNonNull(headerAccessor.getSessionAttributes()).get("username");
 
+        // logs whenever user comes online
+        if (username != null) {
+            log.info("{} is online!", username);
+        }
+
+    }
+
+    // listens to user going offline events
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String username = (String) Objects.requireNonNull(headerAccessor.getSessionAttributes()).get("username");
-        String roomId = (String) headerAccessor.getSessionAttributes().get("room_id");
 
+        // logs whenever user goes offline
         if (username != null) {
-            log.info("{} disconnected from {}!", username, roomId);
-
-            ChatMessage chatMessage = ChatMessage
-                    .builder()
-                    .type(ChatMessage.MessageType.LEAVE)
-                    .sender(username)
-                    .build();
-
-            messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
+            log.info("{} has gone offline!", username);
         }
-
     }
 
 }
