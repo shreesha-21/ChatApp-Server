@@ -19,11 +19,12 @@ public class ChatMessage {
     private String content;
     private String recipient;   // For one on one chats
     private String sender;
+    private boolean isGroup;
 
     @Enumerated(EnumType.STRING)
     private MessageType type;
 
-    private String roomId; // Null for a private message
+    private String chatId; // Null for a private message
     private Date timeStamp;
 
     public enum MessageType {
