@@ -15,7 +15,7 @@ import java.util.Objects;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class WebSockerEventListner {
+public class WebSocketEventListener {
 
     private final SimpMessageSendingOperations messagingTemplate;
 
