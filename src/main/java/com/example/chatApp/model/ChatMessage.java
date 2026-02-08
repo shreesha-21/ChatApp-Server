@@ -7,11 +7,9 @@ import java.util.Date;
 
 //  Model for the message in chat
 @Entity // Makes this a db table
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
+@Getter @Setter @AllArgsConstructor @NoArgsConstructor
 @Builder
+@Table(name = "chat_messages")
 public class ChatMessage {
 
     @Id
