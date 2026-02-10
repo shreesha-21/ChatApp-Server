@@ -9,7 +9,7 @@ import java.util.List;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
     // Find chat history for a specific room
-    List<ChatMessage> findByRoomId(String roomId);
+    List<ChatMessage> findByChatId(String chatId);
 
     // Find chat history between sender and recipient
     List<ChatMessage> findBySenderAndRecipient(

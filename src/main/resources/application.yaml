@@ -3,9 +3,9 @@ spring:
     name: ChatApp
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: jdbc:postgresql://localhost:5432/convoDb?options=-c%20TimeZone=UTC
+    username: postgresUser
+    password: Postgres@123
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -13,4 +13,5 @@ spring:
     show-sql: true      # Prints SQL queries to the console (useful for debugging)
     properties:
       hibernate:
+        jdbc.time_zone: UTC
         dialect: org.hibernate.dialect.PostgreSQLDialect
