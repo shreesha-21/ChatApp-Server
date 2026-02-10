@@ -1,109 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Chat Room Test</title>
+    <title>Chat Application Test</title>
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        #conversation { margin-top: 20px; border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
-        .message { border-bottom: 1px solid #eee; padding: 5px; }
-        .controls { margin-bottom: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+
+        /* Form Elements */
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        input[type="text"] { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        button.primary { background-color: #007bff; color: white; }
+        button.primary:hover { background-color: #0056b3; }
+        button.danger { background-color: #dc3545; color: white; }
+        button.danger:hover { background-color: #c82333; }
+
+        /* Toggle Switch */
+        .toggle-container { display: flex; align-items: center; gap: 5px; font-size: 0.9em; color: #666; }
+
+        /* Chat Area */
+        #conversation { border: 1px solid #eee; background: #fafafa; padding: 15px; height: 400px; overflow-y: auto; border-radius: 4px; margin-bottom: 15px; }
+        .message { padding: 8px 12px; margin-bottom: 8px; border-radius: 15px; max-width: 70%; clear: both; }
+        .message.sent { background-color: #dcf8c6; float: right; text-align: right; }
+        .message.received { background-color: #fff; border: 1px solid #ddd; float: left; }
+        .message-meta { font-size: 0.75em; color: #999; margin-bottom: 2px; }
+        .system-msg { text-align: center; color: #888; font-style: italic; font-size: 0.9em; clear: both; margin: 5px 0; }
+
+        .clearfix::after { content: ""; clear: both; display: table; }
     </style>
 </head>
 <body>
-<h2>Spring Boot Dynamic Chat</h2>
 
-<div class="controls">
-    <label for="username"></label><input type="text" id="username" placeholder="Username (e.g. Alice)" />
-    <label for="roomId"></label><input type="text" id="roomId" placeholder="Room ID (e.g. sports)" />
-    <button onclick="connect()">Join Room</button>
+<div class="container">
+    <h2>Spring Boot Chat Tester</h2>
+
+    <div class="controls" id="login-section">
+        <input type="text" id="username" placeholder="Enter Username (e.g. Alice)" />
+        <button class="primary" onclick="connect()">Login & Connect</button>
+    </div>
+
+    <div id="chat-section" style="display:none;">
+        <div class="controls" style="background: #f1f1f1; padding: 10px; border-radius: 5px;">
+            <input type="text" id="recipient" placeholder="Room Name OR User Name" />
+
+            <div class="toggle-container">
+                <input type="checkbox" id="isPrivate" />
+                <label for="isPrivate">Private Message?</label>
+            </div>
+
+            <button class="primary" onclick="subscribeToChannel()">Join/Listen</button>
+        </div>
+
+        <div id="conversation" class="clearfix"></div>
+
+        <div class="controls">
+            <input type="text" id="message" placeholder="Type a message..." onkeypress="handleKeyPress(event)" />
+            <button class="primary" onclick="sendMessage()">Send</button>
+            <button class="danger" onclick="disconnect()">Logout</button>
+        </div>
+    </div>
 </div>
-
-<div id="chat-controls" style="display:none;">
-    <label for="message"></label><input type="text" id="message" placeholder="Type a message..." />
-    <button onclick="sendMessage()">Send</button>
-    <button onclick="disconnect()" style="background-color: #ffcccc;">Leave</button>
-</div>
-
-<div id="conversation"></div>
 
 <script>
     var stompClient = null;
-    var username = null;
-    var roomId = null;
+    var myUsername = null;
+    var currentSubscription = null;
 
     function connect() {
-        username = document.getElementById('username').value.trim();
-        roomId = document.getElementById('roomId').value.trim();
+        myUsername = document.getElementById('username').value.trim();
+        if(!myUsername) { alert("Please enter a username"); return; }
 
-        if(!username || !roomId) { alert("Please enter both Name and Room ID"); return; }
-
-        <!--Connect to the Web Endpoint-->
+        // 1. Connect to Web Endpoint
         var socket = new SockJS('/ws-web');
         stompClient = Stomp.over(socket);
 
-        <!--Auth Header (Mock Token = Username)-->
+        // 2. Auth Header (Mock Token = Username)
         var headers = {
-            'Authorization': 'Bearer ' + username
+            'Authorization': 'Bearer ' + myUsername
         };
 
         stompClient.connect(headers, function (frame) {
             console.log('Connected: ' + frame);
-            document.getElementById('chat-controls').style.display = 'block';
-            document.getElementById('conversation').innerHTML = ''; // Clear old chat
 
-            <!--Subscribe to Dynamic Room Topic-->
-            <!--Backend broadcasts to: /topic/{roomId}-->
-            stompClient.subscribe('/topic/' + roomId, function (chatMessage) {
-                showMessage(JSON.parse(chatMessage.body));
+            // UI Switch
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('chat-section').style.display = 'block';
+
+            // Auto-subscribe to my own private queue (for 1-on-1s)
+            stompClient.subscribe('/user/queue/private', function (payload) {
+                showMessage(JSON.parse(payload.body), true);
             });
 
-            <!--Send JOIN event-->
-            stompClient.send("/app/chat/" + roomId + "/addUser",
-                {},
-                JSON.stringify({sender: username, type: 'JOIN'})
-            );
+            appendSystemMessage("Connected as " + myUsername);
+
+        }, function(error) {
+            console.log("Error: " + error);
+            alert("Could not connect. Check console.");
         });
+    }
+
+    function subscribeToChannel() {
+        var recipient = document.getElementById('recipient').value.trim();
+        var isPrivate = document.getElementById('isPrivate').checked;
+
+        if (!recipient) { alert("Enter a Room Name to join!"); return; }
+
+        // Clear previous subscription if switching rooms
+        if (currentSubscription) { currentSubscription.unsubscribe(); }
+
+        // Clear chat UI for new room
+        document.getElementById('conversation').innerHTML = '';
+
+        if (isPrivate) {
+             appendSystemMessage("Ready to chat privately with " + recipient);
+             // No need to subscribe to a topic for sending private messages
+             // We already subscribed to /user/queue/private in connect()
+        } else {
+            // It's a Group Room -> Subscribe to /topic/{roomName}
+            currentSubscription = stompClient.subscribe('/topic/' + recipient, function (payload) {
+                showMessage(JSON.parse(payload.body), false);
+            });
+            appendSystemMessage("Joined Room: " + recipient);
+        }
     }
 
     function sendMessage() {
         var messageContent = document.getElementById('message').value.trim();
+        var recipient = document.getElementById('recipient').value.trim();
+        var isPrivate = document.getElementById('isPrivate').checked;
+
         if(messageContent && stompClient) {
+
+            // MATCHING YOUR JAVA ENTITY
             var chatMessage = {
-                sender: username,
+                senderId: myUsername,
+                recipientId: recipient,
                 content: messageContent,
-                type: 'CHAT'
+                isRoom: !isPrivate // True if Room, False if Private
             };
-            // 5. Send to Dynamic Destination
-            stompClient.send("/app/chat/" + roomId + "/sendMessage", {}, JSON.stringify(chatMessage));
+
+            // Unified Destination
+            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+
+            // If private, manually show the message on my screen (since I don't get the echo)
+            if (isPrivate) {
+                showMessage(chatMessage, true);
+            }
+
             document.getElementById('message').value = '';
         }
+    }
+
+    function showMessage(message, isPrivate) {
+        var response = document.getElementById('conversation');
+
+        var msgDiv = document.createElement('div');
+        msgDiv.className = 'message ' + (message.senderId === myUsername ? 'sent' : 'received');
+
+        var meta = document.createElement('div');
+        meta.className = 'message-meta';
+        meta.textContent = message.senderId + (isPrivate ? ' (Private)' : '');
+
+        var content = document.createElement('div');
+        content.textContent = message.content;
+
+        msgDiv.appendChild(meta);
+        msgDiv.appendChild(content);
+        response.appendChild(msgDiv);
+
+        // Auto-scroll
+        response.scrollTop = response.scrollHeight;
+    }
+
+    function appendSystemMessage(text) {
+        var response = document.getElementById('conversation');
+        var p = document.createElement('div');
+        p.className = 'system-msg';
+        p.textContent = text;
+        response.appendChild(p);
+    }
+
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') sendMessage();
     }
 
     function disconnect() {
         if (stompClient !== null) {
             stompClient.disconnect();
         }
-        document.getElementById('chat-controls').style.display = 'none';
-        console.log("Disconnected");
-    }
-
-    function showMessage(message) {
-        var response = document.getElementById('conversation');
-        var p = document.createElement('div');
-        p.className = 'message';
-
-        if(message.type === 'JOIN') {
-            p.style.color = 'green';
-            p.textContent = message.sender + ' joined ' + roomId + '!';
-        } else if (message.type === 'LEAVE') {
-            p.style.color = 'red';
-            p.textContent = message.sender + ' left!';
-        } else {
-            p.textContent = message.sender + ": " + message.content;
-        }
-        response.appendChild(p);
+        location.reload();
     }
 </script>
 </body>
