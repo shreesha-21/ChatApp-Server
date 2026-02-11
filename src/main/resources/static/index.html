@@ -79,7 +79,7 @@
 
         // 2. Auth Header (Mock Token = Username)
         var headers = {
-            'Authorization': 'Bearer ' + myUsername
+            'Authorization': 'Bearer: ' + myUsername
         };
 
         stompClient.connect(headers, function (frame) {
@@ -136,10 +136,10 @@
 
             // MATCHING YOUR JAVA ENTITY
             var chatMessage = {
-                senderId: myUsername,
-                recipientId: recipient,
+                sender: myUsername,
+                recipient: recipient,
                 content: messageContent,
-                isRoom: !isPrivate // True if Room, False if Private
+                isGroup: !isPrivate // True if Room, False if Private
             };
 
             // Unified Destination
@@ -158,11 +158,11 @@
         var response = document.getElementById('conversation');
 
         var msgDiv = document.createElement('div');
-        msgDiv.className = 'message ' + (message.senderId === myUsername ? 'sent' : 'received');
+        msgDiv.className = 'message ' + (message.sender === myUsername ? 'sent' : 'received');
 
         var meta = document.createElement('div');
         meta.className = 'message-meta';
-        meta.textContent = message.senderId + (isPrivate ? ' (Private)' : '');
+        meta.textContent = message.sender + (isPrivate ? ' (Private)' : '');
 
         var content = document.createElement('div');
         content.textContent = message.content;
