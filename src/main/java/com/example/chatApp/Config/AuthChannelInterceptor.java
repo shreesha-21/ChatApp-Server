@@ -37,7 +37,7 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
     // Function to validate the JWT token
     private boolean isValidToken(String token) {
         //  Need to be updated with proper JWT authorization
-        return token != null && token.startsWith("Bearer ");
+        return token != null && token.startsWith("Bearer: ");
     }
 
     // Function to extract username from the JWT token

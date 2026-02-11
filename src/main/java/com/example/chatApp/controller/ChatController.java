@@ -4,6 +4,8 @@ import com.example.chatApp.model.ChatMessage;
 import com.example.chatApp.repository.ChatMessageRepository;
 import com.example.chatApp.service.ChatService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -15,6 +17,7 @@ import java.util.Date;
 import java.util.Objects;
 
 //  Controller to handle messaging and adding new user in the app
+@Slf4j
 @RequiredArgsConstructor
 @Controller
 public class ChatController {
@@ -36,6 +39,9 @@ public class ChatController {
                     chatMessage
             );
 
+            //  logs sending message to a room
+            log.debug("Sending the message to {} group", chatMessage.getRecipient());
+
         }
         else {
 
@@ -52,6 +58,9 @@ public class ChatController {
                     "/queue/private",
                     chatMessage
             );
+
+            // logs message sent privately to a user
+            log.debug("Sending the message to {} privately", chatMessage.getRecipient());
         }
     }
 

@@ -15,3 +15,9 @@ spring:
       hibernate:
         jdbc.time_zone: UTC
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# Configuration to show the debug messages on the console
+logging:
+  level:
+    root: INFO # Keeps Spring/Hibernate spam hidden
+    com.example.chatApp: DEBUG # Shows debug logs ONLY for your code

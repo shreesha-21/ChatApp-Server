@@ -2,6 +2,7 @@ package com.example.chatApp.controller;
 
 import com.example.chatApp.model.User;
 import com.example.chatApp.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,6 +13,7 @@ import java.util.Collections;
 import java.util.Map;
 
 // handles the authentication of the user
+@Slf4j
 @RestController
 public class AuthController {
 
@@ -26,9 +28,18 @@ public class AuthController {
             String token = "Bearer: " + user.getUsername();
 
             LoginResponse response = new LoginResponse(token, user);
+
+            // logs creating a new user
+            log.debug("New user created");
+
             return ResponseEntity.ok(response);
 
+
         } catch (RuntimeException e) {
+
+            // logs the error occurred during logging in
+            log.debug("Login could not be done due to error: {}", e.toString());
+
             return ResponseEntity.status(401).build(); // 401 Unauthorized
         }
     }
